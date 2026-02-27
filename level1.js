@@ -41,11 +41,25 @@ class Level1 extends Phaser.Scene {
         this.cursors = this.input.keyboard.createCursorKeys();
     }
 
-    update() {
-        if (this.cursors.left.isDown) this.player.setVelocityX(-1000);
-        else if (this.cursors.right.isDown) this.player.setVelocityX(300);
-        else this.player.setVelocityX(0);
+    \
+        update() {
+    const speed = 400;
+    const jumpPower = -1100; // Increased from -800 for a higher jump
 
-        if (this.cursors.up.isDown && this.player.body.touching.down) this.player.setVelocityY(-800);
+    if (this.cursors.left.isDown) {
+        this.player.setVelocityX(-speed);
+        this.player.flipX = false;
+    } else if (this.cursors.right.isDown) {
+        this.player.setVelocityX(speed);
+        this.player.flipX = true;
+    } else {
+        this.player.setVelocityX(0);
+    }
+
+    // The jump logic
+    if (this.cursors.up.isDown && this.player.body.touching.down) {
+        this.player.setVelocityY(jumpPower); 
+    }
+}
     }
 }
