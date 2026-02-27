@@ -3,122 +3,118 @@
 <head>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
 </head>
-<body style="margin: 0; background: #222;">
+<body style="margin: 0; background: #000;">
 <script>
 const config = {
     type: Phaser.AUTO,
     width: 800,
     height: 600,
-    physics: { default: 'arcade', arcade: { gravity: { y: 800 }, debug: false } },
+    physics: { 
+        default: 'arcade', 
+        arcade: { gravity: { y: 1000 }, debug: false } 
+    },
     scene: { preload: preload, create: create, update: update }
 };
 
-let player, jeep, platforms, lava, cursors, levelText;
+let player, jeep, platforms, hazards, cursors, levelText;
 let currentLevel = 1;
-const maxLevels = 20;
 
-const game = new Phaser.Game(config);
+new Phaser.Game(config);
 
 function preload() {
-    // Using colored squares as placeholders for your Duck, Jeep, and Lava
-    this.graphics = this.make.graphics({x: 0, y: 0, add: false});
-    
-    // Duck (Yellow)
-    this.graphics.fillStyle(0xffff00).fillRect(0, 0, 32, 32);
-    this.graphics.generateTexture('duck', 32, 32);
-    
-    // Jeep (Green)
-    this.graphics.clear().fillStyle(0x00ff00).fillRect(0, 0, 48, 32);
-    this.graphics.generateTexture('jeep', 48, 32);
-    
-    // Lava (Red/Orange)
-    this.graphics.clear().fillStyle(0xff4400).fillRect(0, 0, 32, 32);
-    this.graphics.generateTexture('lava', 32, 32);
-    
-    // Ground (Dynamic color per level)
-    this.graphics.clear().fillStyle(0xffffff).fillRect(0, 0, 32, 32);
-    this.graphics.generateTexture('ground', 32, 32);
+    // Realistic transparent PNGs
+    this.load.image('duck', 'https://png.pngtree.com/png-vector/20231019/ourmid/pngtree-yellow-rubber-duck-isolated-on-white-background-png-image_10214309.png');
+    this.load.image('jeep', 'https://static.vecteezy.com/system/resources/previews/023/182/076/non_2x/off-road-car-isolated-on-transparent-background-3d-rendering-illustration-free-png.png');
+    this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
+    this.load.image('lava', 'https://labs.phaser.io/assets/sprites/shmup-baddie.png'); // Placeholder for hazard
 }
 
 function create() {
     setupLevel.call(this);
     cursors = this.input.keyboard.createCursorKeys();
-    levelText = this.add.text(16, 16, 'Level: 1', { fontSize: '32px', fill: '#fff' });
+    levelText = this.add.text(20, 20, 'Level 1', { fontSize: '32px', fill: '#fff', stroke: '#000', strokeThickness: 4 });
+    levelText.setScrollFactor(0);
 }
 
 function setupLevel() {
+    // Cleanup previous level
     if (platforms) platforms.clear(true, true);
-    if (lava) lava.clear(true, true);
+    if (hazards) hazards.clear(true, true);
     if (player) player.destroy();
     if (jeep) jeep.destroy();
 
-    // 1. Color Theme Logic
-    const hue = (currentLevel * 18) % 360; 
-    const bgColor = Phaser.Display.Color.HSLToColor(hue / 360, 0.3, 0.2).color;
-    this.cameras.main.setBackgroundColor(bgColor);
+    // 1. Dynamic Color Background
+    const hue = (currentLevel * 25) % 360;
+    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HSLToColor(hue/360, 0.5, 0.1).color);
 
     platforms = this.physics.add.staticGroup();
-    lava = this.physics.add.staticGroup();
+    hazards = this.physics.add.staticGroup();
 
-    // 2. Build World (Level gets longer as currentLevel increases)
-    const levelWidth = 800 + (currentLevel * 100);
-    this.cameras.main.setBounds(0, 0, levelWidth, 600);
-    this.physics.world.setBounds(0, 0, levelWidth, 600);
+    const levelLength = 800 + (currentLevel * 150);
+    this.physics.world.setBounds(0, 0, levelLength, 600);
+    this.cameras.main.setBounds(0, 0, levelLength, 600);
 
-    // Starting Floor
-    for (let i = 0; i < 5; i++) platforms.create(16 + (i * 32), 584, 'ground').setTint(0x888888);
-
-    // Procedural Obstacles
-    for (let x = 160; x < levelWidth - 100; x += 150) {
-        let gapSize = Math.min(3, 1 + Math.floor(currentLevel / 5));
-        // Add Lava
-        for(let g = 0; g < gapSize; g++) {
-            lava.create(x + (g * 32), 584, 'lava');
+    // 2. Create Ground & Hazards
+    for (let x = 0; x < levelLength; x += 128) {
+        // Randomly decide if this section is ground or lava
+        if (x > 200 && x < levelLength - 200 && Math.random() < 0.3) {
+            let spike = hazards.create(x, 580, 'lava').setScale(0.5).setTint(0xff0000);
+            spike.body.setSize(40, 40); // Accurate hit box
+        } else {
+            platforms.create(x, 580, 'ground').setDisplaySize(128, 40).refreshBody();
         }
-        // Add Platform after Lava
-        platforms.create(x + (gapSize * 32) + 32, 500 - (Math.random() * 100), 'ground').setTint(0x888888);
     }
 
-    // 3. Add Entities
-    player = this.physics.add.sprite(50, 400, 'duck');
+    // 3. Setup Duck and Jeep
+    player = this.physics.add.sprite(100, 450, 'duck').setScale(0.15); // Scaled for realism
     player.setCollideWorldBounds(true);
     
-    jeep = this.physics.add.sprite(levelWidth - 50, 500, 'jeep');
+    jeep = this.physics.add.sprite(levelLength - 100, 500, 'jeep').setScale(0.2);
     
-    // 4. Physics
+    // 4. Collision & Death Logic
     this.physics.add.collider(player, platforms);
     this.physics.add.collider(jeep, platforms);
-    this.physics.add.overlap(player, lava, hitLava, null, this);
-    this.physics.add.overlap(player, jeep, reachJeep, null, this);
+    
+    // DEATH OVERLAP: If player hits hazards, call resetLevel
+    this.physics.add.overlap(player, hazards, resetLevel, null, this);
+    
+    // WIN OVERLAP: If player hits jeep, go to next level
+    this.physics.add.overlap(player, jeep, nextLevel, null, this);
 
-    this.cameras.main.startFollow(player);
+    this.cameras.main.startFollow(player, true, 0.1, 0.1);
 }
 
 function update() {
     if (cursors.left.isDown) {
-        player.setVelocityX(-160);
+        player.setVelocityX(-200);
+        player.flipX = true;
     } else if (cursors.right.isDown) {
-        player.setVelocityX(160);
+        player.setVelocityX(200);
+        player.flipX = false;
     } else {
         player.setVelocityX(0);
     }
 
     if (cursors.up.isDown && player.body.touching.down) {
-        player.setVelocityY(-450);
+        player.setVelocityY(-550);
     }
+
+    // Death if duck falls off the screen bottom
+    if (player.y > 600) resetLevel.call(this);
 }
 
-function hitLava(player, lava) {
-    this.scene.restart();
+function resetLevel() {
+    console.log("Duck hit an obstacle! Resetting...");
+    this.scene.restart(); 
 }
 
-function reachJeep(player, jeep) {
+function nextLevel() {
     currentLevel++;
-    if (currentLevel <= maxLevels) {
-        levelText.setText('Level: ' + currentLevel);
+    if (currentLevel <= 20) {
+        levelText.setText('Level ' + currentLevel);
         setupLevel.call(this);
     } else {
-        alert("You Win! The Duck reached the Jeep through all 20 levels!");
+        alert("You finished all 20 levels!");
         currentLevel = 1;
         this.scene.restart();
     }
