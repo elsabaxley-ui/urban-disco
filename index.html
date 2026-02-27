@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+</head>
+<body style="margin: 0; background: #222;">
+<script>
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    physics: { default: 'arcade', arcade: { gravity: { y: 800 }, debug: false } },
+    scene: { preload: preload, create: create, update: update }
+};
+
+let player, jeep, platforms, lava, cursors, levelText;
+let currentLevel = 1;
+const maxLevels = 20;
+
+const game = new Phaser.Game(config);
+
+function preload() {
+    // Using colored squares as placeholders for your Duck, Jeep, and Lava
+    this.graphics = this.make.graphics({x: 0, y: 0, add: false});
+    
+    // Duck (Yellow)
+    this.graphics.fillStyle(0xffff00).fillRect(0, 0, 32, 32);
+    this.graphics.generateTexture('duck', 32, 32);
+    
+    // Jeep (Green)
+    this.graphics.clear().fillStyle(0x00ff00).fillRect(0, 0, 48, 32);
+    this.graphics.generateTexture('jeep', 48, 32);
+    
+    // Lava (Red/Orange)
+    this.graphics.clear().fillStyle(0xff4400).fillRect(0, 0, 32, 32);
+    this.graphics.generateTexture('lava', 32, 32);
+    
+    // Ground (Dynamic color per level)
+    this.graphics.clear().fillStyle(0xffffff).fillRect(0, 0, 32, 32);
+    this.graphics.generateTexture('ground', 32, 32);
+}
+
+function create() {
+    setupLevel.call(this);
+    cursors = this.input.keyboard.createCursorKeys();
+    levelText = this.add.text(16, 16, 'Level: 1', { fontSize: '32px', fill: '#fff' });
+}
+
+function setupLevel() {
+    if (platforms) platforms.clear(true, true);
+    if (lava) lava.clear(true, true);
+    if (player) player.destroy();
+    if (jeep) jeep.destroy();
+
+    // 1. Color Theme Logic
+    const hue = (currentLevel * 18) % 360; 
+    const bgColor = Phaser.Display.Color.HSLToColor(hue / 360, 0.3, 0.2).color;
+    this.cameras.main.setBackgroundColor(bgColor);
+
+    platforms = this.physics.add.staticGroup();
+    lava = this.physics.add.staticGroup();
+
+    // 2. Build World (Level gets longer as currentLevel increases)
+    const levelWidth = 800 + (currentLevel * 100);
+    this.cameras.main.setBounds(0, 0, levelWidth, 600);
+    this.physics.world.setBounds(0, 0, levelWidth, 600);
+
+    // Starting Floor
+    for (let i = 0; i < 5; i++) platforms.create(16 + (i * 32), 584, 'ground').setTint(0x888888);
+
+    // Procedural Obstacles
+    for (let x = 160; x < levelWidth - 100; x += 150) {
+        let gapSize = Math.min(3, 1 + Math.floor(currentLevel / 5));
+        // Add Lava
+        for(let g = 0; g < gapSize; g++) {
+            lava.create(x + (g * 32), 584, 'lava');
+        }
+        // Add Platform after Lava
+        platforms.create(x + (gapSize * 32) + 32, 500 - (Math.random() * 100), 'ground').setTint(0x888888);
+    }
+
+    // 3. Add Entities
+    player = this.physics.add.sprite(50, 400, 'duck');
+    player.setCollideWorldBounds(true);
+    
+    jeep = this.physics.add.sprite(levelWidth - 50, 500, 'jeep');
+    
+    // 4. Physics
+    this.physics.add.collider(player, platforms);
+    this.physics.add.collider(jeep, platforms);
+    this.physics.add.overlap(player, lava, hitLava, null, this);
+    this.physics.add.overlap(player, jeep, reachJeep, null, this);
+
+    this.cameras.main.startFollow(player);
+}
+
+function update() {
+    if (cursors.left.isDown) {
+        player.setVelocityX(-160);
+    } else if (cursors.right.isDown) {
+        player.setVelocityX(160);
+    } else {
+        player.setVelocityX(0);
+    }
+
+    if (cursors.up.isDown && player.body.touching.down) {
+        player.setVelocityY(-450);
+    }
+}
+
+function hitLava(player, lava) {
+    this.scene.restart();
+}
+
+function reachJeep(player, jeep) {
+    currentLevel++;
+    if (currentLevel <= maxLevels) {
+        levelText.setText('Level: ' + currentLevel);
+        setupLevel.call(this);
+    } else {
+        alert("You Win! The Duck reached the Jeep through all 20 levels!");
+        currentLevel = 1;
+        this.scene.restart();
+    }
+}
+</script>
+</body>
+</html>
