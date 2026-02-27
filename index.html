@@ -2,167 +2,23 @@
 <html>
 <head>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+    <script src="level1.js"></script>
+    <script src="level2.js"></script>
 </head>
 <body style="margin: 0; background: #000;">
 <script>
-const config = {
-    type: Phaser.AUTO,
-    width: 1000,
-    height: 800,
-    physics: { 
-        default: 'arcade', 
-        arcade: { gravity: { y: 1600 }, debug: false } 
-    },
-    scene: { preload: preload, create: create, update: update }
-};
-
-let player, jeep, platforms, movingPlatforms, hazards, cursors, levelText;
-let currentLevel = 1;
-
-new Phaser.Game(config);
-
-function preload() {
-    this.load.image('duck', 'https://upload.wikimedia.org/wikipedia/commons/4/48/Rubber_Duckies.png');
-    this.load.image('jeep', 'https://purepng.com/public/uploads/large/purepng.com-jeep-wrangler-white-carcarvehicletransportationjeep-961524660333t3xsm.png');
-    this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
-    this.load.image('lava', 'https://labs.phaser.io/assets/sprites/shmup-baddie.png'); 
-}
-
-function create() {
-    setupLevel.call(this);
-    cursors = this.input.keyboard.createCursorKeys();
-    
-    levelText = this.add.text(40, 40, 'LEVEL ' + currentLevel, { 
-        fontSize: '64px', 
-        fontFamily: 'Arial Black',
-        fill: '#FFFF00', 
-        stroke: '#000', 
-        strokeThickness: 10 
-    }).setScrollFactor(0).setDepth(100);
-}
-
-function setupLevel() {
-    if (platforms) platforms.clear(true, true);
-    if (movingPlatforms) movingPlatforms.clear(true, true);
-    if (hazards) hazards.clear(true, true);
-    if (player) player.destroy();
-    if (jeep) jeep.destroy();
-
-    const hue = (currentLevel * 40) % 360;
-    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HSLToColor(hue/360, 0.8, 0.15).color);
-
-    platforms = this.physics.add.staticGroup();
-    movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
-    hazards = this.physics.add.staticGroup();
-
-    const worldWidth = 1600 + (currentLevel * 100);
-    const worldHeight = 1200 + (currentLevel * 200);
-    this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
-    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
-
-    let lastX = 200;
-    let lastY = worldHeight - 150;
-
-    // Start Platform
-    platforms.create(lastX, lastY, 'ground').setDisplaySize(400, 40).refreshBody();
-
-    while (lastY > 300) {
-        lastX = Phaser.Math.Between(200, worldWidth - 200);
-        lastY -= 220; 
-
-        // Level 1 is static. Level 2+ introduces moving platforms.
-        if (currentLevel > 1 && Math.random() > 0.4) {
-            let mp = movingPlatforms.create(lastX, lastY, 'ground').setDisplaySize(200, 40);
-            mp.setTint(0x00ffff);
-            
-            // Randomly choose horizontal or vertical movement
-            if (Math.random() > 0.5) {
-                this.tweens.add({
-                    targets: mp,
-                    x: mp.x + 200,
-                    duration: 2000,
-                    ease: 'Sine.easeInOut',
-                    yoyo: true,
-                    repeat: -1
-                });
-            } else {
-                this.tweens.add({
-                    targets: mp,
-                    y: mp.y - 150,
-                    duration: 1500,
-                    ease: 'Sine.easeInOut',
-                    yoyo: true,
-                    repeat: -1
-                });
-            }
-        } else {
-            let p = platforms.create(lastX, lastY, 'ground').setDisplaySize(280, 40).refreshBody();
-            p.setTint(Phaser.Display.Color.HSLToColor((hue+180)/360, 1, 0.5).color);
-        }
-
-        if (currentLevel > 2 && Math.random() > 0.6) {
-            hazards.create(lastX, lastY - 45, 'lava').setScale(1.2).setTint(0xff0000);
-        }
-    }
-
-    // Floor is Lava
-    for(let lx = 0; lx < worldWidth; lx += 100) {
-        hazards.create(lx, worldHeight - 20, 'lava').setDisplaySize(120, 80).setTint(0xff3300).refreshBody();
-    }
-
-    player = this.physics.add.sprite(200, worldHeight - 300, 'duck').setScale(0.18);
-    player.setCollideWorldBounds(true);
-    player.body.setSize(player.width * 0.7, player.height * 0.7);
-
-    jeep = this.physics.add.sprite(lastX, lastY - 120, 'jeep').setScale(0.35);
-    
-    this.physics.add.collider(player, platforms);
-    this.physics.add.collider(player, movingPlatforms);
-    this.physics.add.collider(jeep, platforms);
-    this.physics.add.overlap(player, hazards, () => this.scene.restart(), null, this);
-    this.physics.add.overlap(player, jeep, nextLevel, null, this);
-
-    this.cameras.main.startFollow(player, true, 0.1, 0.1);
-}
-
-function update() {
-    const speed = 400;
-    const jump = -1000;
-
-    if (cursors.left.isDown) {
-        player.setVelocityX(-speed);
-        player.flipX = false;
-        player.setAngle(-10);
-    } else if (cursors.right.isDown) {
-        player.setVelocityX(speed);
-        player.flipX = true;
-        player.setAngle(10);
-    } else {
-        player.setVelocityX(0);
-        player.setAngle(0);
-    }
-
-    if (cursors.up.isDown && player.body.touching.down) {
-        player.setVelocityY(jump);
-        this.tweens.add({ targets: player, scaleY: 0.22, scaleX: 0.14, duration: 100, yoyo: true });
-    }
-
-    if (!player.body.touching.down) {
-        player.setAngle(player.body.velocity.y * 0.02);
-    }
-}
-
-function nextLevel() {
-    currentLevel++;
-    if (currentLevel <= 20) {
-        levelText.setText('LEVEL ' + currentLevel);
-        this.scene.restart();
-    } else {
-        alert("GAME OVER: YOU WIN!");
-        currentLevel = 1;
-        this.scene.restart();
-    }
-}
+    const config = {
+        type: Phaser.AUTO,
+        width: 1000,
+        height: 800,
+        physics: { 
+            default: 'arcade', 
+            arcade: { gravity: { y: 1600 }, debug: false } 
+        },
+        // We list Level1 first so the game starts there
+        scene: [Level1, Level2] 
+    };
+    new Phaser.Game(config);
 </script>
 </body>
 </html>
