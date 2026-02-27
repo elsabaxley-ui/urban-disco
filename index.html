@@ -11,7 +11,7 @@ const config = {
     height: 800,
     physics: { 
         default: 'arcade', 
-        arcade: { gravity: { y: 1200 }, debug: false } 
+        arcade: { gravity: { y: 1500 }, debug: false } 
     },
     scene: { preload: preload, create: create, update: update }
 };
@@ -22,7 +22,7 @@ let currentLevel = 1;
 new Phaser.Game(config);
 
 function preload() {
-    // Large, High-Res Assets
+    // High-Res Character Assets
     this.load.image('duck', 'https://upload.wikimedia.org/wikipedia/commons/4/48/Rubber_Duckies.png');
     this.load.image('jeep', 'https://purepng.com/public/uploads/large/purepng.com-jeep-wrangler-white-carcarvehicletransportationjeep-961524660333t3xsm.png');
     this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
@@ -33,12 +33,12 @@ function create() {
     setupLevel.call(this);
     cursors = this.input.keyboard.createCursorKeys();
     
-    levelText = this.add.text(40, 40, 'Level 1', { 
-        fontSize: '48px', 
+    levelText = this.add.text(40, 40, 'LEVEL ' + currentLevel, { 
+        fontSize: '64px', 
         fill: '#FFF', 
         fontStyle: 'bold',
-        stroke: '#000', 
-        strokeThickness: 6 
+        stroke: '#FF0000', 
+        strokeThickness: 8 
     });
     levelText.setScrollFactor(0);
 }
@@ -49,93 +49,112 @@ function setupLevel() {
     if (player) player.destroy();
     if (jeep) jeep.destroy();
 
-    const hue = (currentLevel * 30) % 360;
-    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HSLToColor(hue/360, 0.6, 0.15).color);
+    // Spider-Verse Style Background Tints
+    const hue = (currentLevel * 45) % 360;
+    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HSLToColor(hue/360, 0.7, 0.1).color);
 
     platforms = this.physics.add.staticGroup();
     hazards = this.physics.add.staticGroup();
 
-    // World size grows vertically and horizontally
-    const worldWidth = 1200 + (currentLevel * 200);
-    const worldHeight = 800 + (currentLevel * 100);
+    // World grows taller and wider
+    const worldWidth = 1500 + (currentLevel * 100);
+    const worldHeight = 1000 + (currentLevel * 150);
     this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
 
-    // 1. Build Vertical Platforms (The "Staircase")
-    let lastX = 0;
-    let lastY = worldHeight - 100;
+    // 1. Procedural Vertical Level Design
+    let lastX = 100;
+    let lastY = worldHeight - 150;
 
-    // Starting Safety Platform
-    platforms.create(100, lastY, 'ground').setDisplaySize(300, 40).refreshBody();
+    // Starting Platform
+    platforms.create(lastX, lastY, 'ground').setDisplaySize(400, 50).refreshBody();
 
-    while (lastX < worldWidth - 300) {
-        lastX += 250;
-        // Randomly move Y up or down, but generally UP to reach the jeep
-        lastY -= (Math.random() * 150) + 50; 
-        
-        // Ensure platforms don't go off top of screen
-        if (lastY < 200) lastY = 400;
+    while (lastY > 200) {
+        lastX += (Math.random() * 400) - 200; // Zig-zag movement
+        lastY -= 180; // Consistent vertical climb
 
-        let p = platforms.create(lastX, lastY, 'ground').setDisplaySize(200, 40).refreshBody();
-        p.setTint(Phaser.Display.Color.HSLToColor((hue+40)/360, 0.8, 0.5).color);
+        // Keep platforms in bounds
+        if (lastX < 200) lastX = 300;
+        if (lastX > worldWidth - 200) lastX = worldWidth - 300;
 
-        // 2. Add Hazards below platforms
-        if (Math.random() > 0.4) {
-            let spike = hazards.create(lastX, lastY + 350, 'lava').setScale(1.5).setTint(0xff0000);
-            spike.body.setAllowGravity(false);
+        let p = platforms.create(lastX, lastY, 'ground').setDisplaySize(250, 40).refreshBody();
+        p.setTint(Phaser.Display.Color.HSLToColor((hue+60)/360, 0.9, 0.6).color);
+
+        // Add Spikes/Lava on some platforms
+        if (currentLevel > 1 && Math.random() > 0.6) {
+            let s = hazards.create(lastX + (Math.random()*50), lastY - 45, 'lava').setScale(1).setTint(0xff0000);
+            s.body.setSize(30, 30);
         }
     }
 
-    // 3. Create Ground Lava (Floor is lava!)
-    for(let lx = 0; lx < worldWidth; lx += 100) {
-        hazards.create(lx, worldHeight - 20, 'lava').setDisplaySize(100, 60).setTint(0xff4400).refreshBody();
+    // 2. The Bottom is Lava
+    for(let lx = 0; lx < worldWidth; lx += 120) {
+        hazards.create(lx, worldHeight - 30, 'lava').setDisplaySize(150, 80).setTint(0xff0000).refreshBody();
     }
 
-    // 4. Setup Duck (Yellow & Large)
-    player = this.physics.add.sprite(100, worldHeight - 250, 'duck').setScale(0.12);
+    // 3. The Character (The Duck)
+    player = this.physics.add.sprite(150, worldHeight - 300, 'duck').setScale(0.15);
     player.setCollideWorldBounds(true);
-    player.body.setSize(player.width * 0.7, player.height * 0.7); // Tighter hitbox
+    player.setDragX(1000); // Smoother stopping
+    player.body.setSize(player.width * 0.6, player.height * 0.8);
 
-    // 5. Setup Jeep (At the highest, furthest point)
-    jeep = this.physics.add.sprite(worldWidth - 150, lastY - 100, 'jeep').setScale(0.3);
+    // 4. The Goal (The Jeep)
+    jeep = this.physics.add.sprite(lastX, lastY - 120, 'jeep').setScale(0.4);
     
-    // Collisions
+    // Physics Connections
     this.physics.add.collider(player, platforms);
     this.physics.add.collider(jeep, platforms);
-    this.physics.add.overlap(player, hazards, resetLevel, null, this);
+    this.physics.add.overlap(player, hazards, () => this.scene.restart(), null, this);
     this.physics.add.overlap(player, jeep, nextLevel, null, this);
 
-    this.cameras.main.startFollow(player, true, 0.1, 0.1);
+    this.cameras.main.startFollow(player, true, 0.08, 0.08);
 }
 
 function update() {
+    const speed = 350;
+    const jumpForce = -900;
+
+    // Movement & Character Flipping
     if (cursors.left.isDown) {
-        player.setVelocityX(-250);
+        player.setVelocityX(-speed);
         player.flipX = true;
+        player.setAngle(-5); // Slight tilt when moving
     } else if (cursors.right.isDown) {
-        player.setVelocityX(250);
+        player.setVelocityX(speed);
         player.flipX = false;
+        player.setAngle(5);
     } else {
         player.setVelocityX(0);
+        player.setAngle(0);
     }
 
-    // Buffed jump for vertical heights
+    // Jumping with "Stretch" Effect
     if (cursors.up.isDown && player.body.touching.down) {
-        player.setVelocityY(-750); 
+        player.setVelocityY(jumpForce);
+        // Visual Stretch
+        this.tweens.add({
+            targets: player,
+            scaleY: 0.2,
+            scaleX: 0.1,
+            duration: 100,
+            yoyo: true,
+            onComplete: () => { player.setScale(0.15); }
+        });
     }
-}
 
-function resetLevel() {
-    this.scene.restart();
+    // If falling fast, tilt the character down
+    if (player.body.velocity.y > 0) {
+        player.setAngle(player.body.velocity.y * 0.05);
+    }
 }
 
 function nextLevel() {
     currentLevel++;
     if (currentLevel <= 20) {
-        levelText.setText('Level ' + currentLevel);
-        setupLevel.call(this);
+        levelText.setText('LEVEL ' + currentLevel);
+        this.scene.restart();
     } else {
-        alert("CHAMPION! You conquered all 20 vertical levels!");
+        alert("YOU WON THE GAME!");
         currentLevel = 1;
         this.scene.restart();
     }
