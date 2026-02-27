@@ -50,4 +50,96 @@ function setupLevel() {
     if (jeep) jeep.destroy();
 
     const hue = (currentLevel * 30) % 360;
-    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HSLToColor(hue/
+    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HSLToColor(hue/360, 0.6, 0.15).color);
+
+    platforms = this.physics.add.staticGroup();
+    hazards = this.physics.add.staticGroup();
+
+    // World size grows vertically and horizontally
+    const worldWidth = 1200 + (currentLevel * 200);
+    const worldHeight = 800 + (currentLevel * 100);
+    this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
+    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+
+    // 1. Build Vertical Platforms (The "Staircase")
+    let lastX = 0;
+    let lastY = worldHeight - 100;
+
+    // Starting Safety Platform
+    platforms.create(100, lastY, 'ground').setDisplaySize(300, 40).refreshBody();
+
+    while (lastX < worldWidth - 300) {
+        lastX += 250;
+        // Randomly move Y up or down, but generally UP to reach the jeep
+        lastY -= (Math.random() * 150) + 50; 
+        
+        // Ensure platforms don't go off top of screen
+        if (lastY < 200) lastY = 400;
+
+        let p = platforms.create(lastX, lastY, 'ground').setDisplaySize(200, 40).refreshBody();
+        p.setTint(Phaser.Display.Color.HSLToColor((hue+40)/360, 0.8, 0.5).color);
+
+        // 2. Add Hazards below platforms
+        if (Math.random() > 0.4) {
+            let spike = hazards.create(lastX, lastY + 350, 'lava').setScale(1.5).setTint(0xff0000);
+            spike.body.setAllowGravity(false);
+        }
+    }
+
+    // 3. Create Ground Lava (Floor is lava!)
+    for(let lx = 0; lx < worldWidth; lx += 100) {
+        hazards.create(lx, worldHeight - 20, 'lava').setDisplaySize(100, 60).setTint(0xff4400).refreshBody();
+    }
+
+    // 4. Setup Duck (Yellow & Large)
+    player = this.physics.add.sprite(100, worldHeight - 250, 'duck').setScale(0.12);
+    player.setCollideWorldBounds(true);
+    player.body.setSize(player.width * 0.7, player.height * 0.7); // Tighter hitbox
+
+    // 5. Setup Jeep (At the highest, furthest point)
+    jeep = this.physics.add.sprite(worldWidth - 150, lastY - 100, 'jeep').setScale(0.3);
+    
+    // Collisions
+    this.physics.add.collider(player, platforms);
+    this.physics.add.collider(jeep, platforms);
+    this.physics.add.overlap(player, hazards, resetLevel, null, this);
+    this.physics.add.overlap(player, jeep, nextLevel, null, this);
+
+    this.cameras.main.startFollow(player, true, 0.1, 0.1);
+}
+
+function update() {
+    if (cursors.left.isDown) {
+        player.setVelocityX(-250);
+        player.flipX = true;
+    } else if (cursors.right.isDown) {
+        player.setVelocityX(250);
+        player.flipX = false;
+    } else {
+        player.setVelocityX(0);
+    }
+
+    // Buffed jump for vertical heights
+    if (cursors.up.isDown && player.body.touching.down) {
+        player.setVelocityY(-750); 
+    }
+}
+
+function resetLevel() {
+    this.scene.restart();
+}
+
+function nextLevel() {
+    currentLevel++;
+    if (currentLevel <= 20) {
+        levelText.setText('Level ' + currentLevel);
+        setupLevel.call(this);
+    } else {
+        alert("CHAMPION! You conquered all 20 vertical levels!");
+        currentLevel = 1;
+        this.scene.restart();
+    }
+}
+</script>
+</body>
+</html>
