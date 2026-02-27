@@ -59,7 +59,4 @@ class Level1 extends Phaser.Scene {
     // The jump logic
     if (this.cursors.up.isDown && this.player.body.touching.down) {
         this.player.setVelocityY(jumpPower); 
-    }
-}
-    }
-}
+    
