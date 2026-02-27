@@ -42,7 +42,7 @@ class Level1 extends Phaser.Scene {
     }
 
     update() {
-        if (this.cursors.left.isDown) this.player.setVelocityX(-300);
+        if (this.cursors.left.isDown) this.player.setVelocityX(-1000);
         else if (this.cursors.right.isDown) this.player.setVelocityX(300);
         else this.player.setVelocityX(0);
 
