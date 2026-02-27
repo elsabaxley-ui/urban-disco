@@ -4,7 +4,7 @@ class Level1 extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('duck', 'https://upload.wikimedia.org/wikipedia/commons/4/48/Rubber_Duckies.png');
+        this.load.image('duck', 'https://media.istockphoto.com/id/1045035708/vector/duckling-simple-vector-icon.jpg?s=612x612&w=0&k=20&c=DPyR6_meVD32JBRKEZiwrAkn0kFY5PT4qxiQblfqkjs=');
         this.load.image('jeep', 'https://purepng.com/public/uploads/large/purepng.com-jeep-wrangler-white-carcarvehicletransportationjeep-961524660333t3xsm.png');
         this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
         this.load.image('lava', 'https://labs.phaser.io/assets/sprites/shmup-baddie.png');
