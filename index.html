@@ -7,11 +7,11 @@
 <script>
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: 1000,
+    height: 800,
     physics: { 
         default: 'arcade', 
-        arcade: { gravity: { y: 1000 }, debug: false } 
+        arcade: { gravity: { y: 1200 }, debug: false } 
     },
     scene: { preload: preload, create: create, update: update }
 };
@@ -22,103 +22,32 @@ let currentLevel = 1;
 new Phaser.Game(config);
 
 function preload() {
-    // Realistic transparent PNGs
-    this.load.image('duck', 'https://png.pngtree.com/png-vector/20231019/ourmid/pngtree-yellow-rubber-duck-isolated-on-white-background-png-image_10214309.png');
-    this.load.image('jeep', 'https://static.vecteezy.com/system/resources/previews/023/182/076/non_2x/off-road-car-isolated-on-transparent-background-3d-rendering-illustration-free-png.png');
+    // Large, High-Res Assets
+    this.load.image('duck', 'https://upload.wikimedia.org/wikipedia/commons/4/48/Rubber_Duckies.png');
+    this.load.image('jeep', 'https://purepng.com/public/uploads/large/purepng.com-jeep-wrangler-white-carcarvehicletransportationjeep-961524660333t3xsm.png');
     this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
-    this.load.image('lava', 'https://labs.phaser.io/assets/sprites/shmup-baddie.png'); // Placeholder for hazard
+    this.load.image('lava', 'https://labs.phaser.io/assets/sprites/shmup-baddie.png'); 
 }
 
 function create() {
     setupLevel.call(this);
     cursors = this.input.keyboard.createCursorKeys();
-    levelText = this.add.text(20, 20, 'Level 1', { fontSize: '32px', fill: '#fff', stroke: '#000', strokeThickness: 4 });
+    
+    levelText = this.add.text(40, 40, 'Level 1', { 
+        fontSize: '48px', 
+        fill: '#FFF', 
+        fontStyle: 'bold',
+        stroke: '#000', 
+        strokeThickness: 6 
+    });
     levelText.setScrollFactor(0);
 }
 
 function setupLevel() {
-    // Cleanup previous level
     if (platforms) platforms.clear(true, true);
     if (hazards) hazards.clear(true, true);
     if (player) player.destroy();
     if (jeep) jeep.destroy();
 
-    // 1. Dynamic Color Background
-    const hue = (currentLevel * 25) % 360;
-    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HSLToColor(hue/360, 0.5, 0.1).color);
-
-    platforms = this.physics.add.staticGroup();
-    hazards = this.physics.add.staticGroup();
-
-    const levelLength = 800 + (currentLevel * 150);
-    this.physics.world.setBounds(0, 0, levelLength, 600);
-    this.cameras.main.setBounds(0, 0, levelLength, 600);
-
-    // 2. Create Ground & Hazards
-    for (let x = 0; x < levelLength; x += 128) {
-        // Randomly decide if this section is ground or lava
-        if (x > 200 && x < levelLength - 200 && Math.random() < 0.3) {
-            let spike = hazards.create(x, 580, 'lava').setScale(0.5).setTint(0xff0000);
-            spike.body.setSize(40, 40); // Accurate hit box
-        } else {
-            platforms.create(x, 580, 'ground').setDisplaySize(128, 40).refreshBody();
-        }
-    }
-
-    // 3. Setup Duck and Jeep
-    player = this.physics.add.sprite(100, 450, 'duck').setScale(0.15); // Scaled for realism
-    player.setCollideWorldBounds(true);
-    
-    jeep = this.physics.add.sprite(levelLength - 100, 500, 'jeep').setScale(0.2);
-    
-    // 4. Collision & Death Logic
-    this.physics.add.collider(player, platforms);
-    this.physics.add.collider(jeep, platforms);
-    
-    // DEATH OVERLAP: If player hits hazards, call resetLevel
-    this.physics.add.overlap(player, hazards, resetLevel, null, this);
-    
-    // WIN OVERLAP: If player hits jeep, go to next level
-    this.physics.add.overlap(player, jeep, nextLevel, null, this);
-
-    this.cameras.main.startFollow(player, true, 0.1, 0.1);
-}
-
-function update() {
-    if (cursors.left.isDown) {
-        player.setVelocityX(-200);
-        player.flipX = true;
-    } else if (cursors.right.isDown) {
-        player.setVelocityX(200);
-        player.flipX = false;
-    } else {
-        player.setVelocityX(0);
-    }
-
-    if (cursors.up.isDown && player.body.touching.down) {
-        player.setVelocityY(-550);
-    }
-
-    // Death if duck falls off the screen bottom
-    if (player.y > 600) resetLevel.call(this);
-}
-
-function resetLevel() {
-    console.log("Duck hit an obstacle! Resetting...");
-    this.scene.restart(); 
-}
-
-function nextLevel() {
-    currentLevel++;
-    if (currentLevel <= 20) {
-        levelText.setText('Level ' + currentLevel);
-        setupLevel.call(this);
-    } else {
-        alert("You finished all 20 levels!");
-        currentLevel = 1;
-        this.scene.restart();
-    }
-}
-</script>
-</body>
-</html>
+    const hue = (currentLevel * 30) % 360;
+    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HSLToColor(hue/
